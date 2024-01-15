@@ -5,7 +5,7 @@ from keras.layers import Dense, ReLU, Softmax,Input
 from keras.losses import MeanSquaredError
 from keras.optimizers import Adam
 from typing import Tuple
-from copy import deepcopy
+from copy import copy
 
 class Linear_QNet(Model):
 
@@ -13,14 +13,19 @@ class Linear_QNet(Model):
         super(Linear_QNet, self).__init__()
         self.inputs  = Input(shape=input_size)
         self.linear1 = Dense(hidden_size)
-        self.linear2 = Dense(output_size)
+        self.linear2 = Dense(hidden_size)
+        self.linear3 = Dense(hidden_size)
         self.relu    = ReLU()
+        self.outputs = Dense(output_size)
         self.softmax = Softmax()
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         x = self.linear1(inputs)
         x = self.relu(x)
         x = self.linear2(x)
+        x = self.relu(x)
+        x = self.linear3(x)
+        x = self.outputs(x)
         return self.softmax(x)
     
 class Trainer:
@@ -47,14 +52,13 @@ class Trainer:
 
         with tf.GradientTape() as tape:
             pred   = self.model(state)
-            target = deepcopy(pred).numpy()
+            target = copy(pred)
+            target = target.numpy()
             for idx in range(len(done)):
                 Q_new = reward[idx]
                 if not done[idx]:
-                    next_state = tf.reshape(next_state[idx], (1, 11))
-                    Q_new      = reward[idx] + self.gamma*tf.reduce_max(self.model(next_state))
-                target[idx][tf.argmax(action[idx]).numpy().astype(int)] = Q_new
-                target = tf.convert_to_tensor(target, dtype=tf.float32)
+                    Q_new = reward[idx] + self.gamma*np.max(self.model(tf.expand_dims(next_state[idx], 0)))
+                target[idx, np.argmax(action[idx]).astype(int)] = Q_new
             loss = self.loss(target, pred)
 
         grads = tape.gradient(loss, self.model.trainable_weights)

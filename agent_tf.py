@@ -80,9 +80,7 @@ class Agent:
             state0           = tf.convert_to_tensor(state, dtype=tf.float32)
             state0           = tf.reshape(state0, (1, 11))
             prediction       = self.model(state0)
-            move             = tf.argmax(prediction).numpy().astype(int)
-            if np.array_equal(move, [0, 0, 0]):
-                move = random.randint(0, 2)
+            move             = np.argmax(prediction).astype(int)
             final_move[move] = 1
         return final_move
     
