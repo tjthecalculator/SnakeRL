@@ -2,6 +2,7 @@ import random
 import numpy as np 
 import tensorflow as tf 
 from snake import SnakeAI, Point, Direction
+from model_tf import Linear_QNet, Trainer
 from collections import deque
 from typing import Tuple
 
@@ -16,8 +17,8 @@ class Agent:
         self.epsilon = 0
         self.gamma   = 0.9
         self.memory  = deque(maxlen=MAX_MEMORY)
-        self.model   = None
-        self.trainer = None
+        self.model   = Linear_QNet(11, 256, 3)
+        self.trainer = Trainer(self.model, lr=LR, gamma=self.gamma)
 
     def get_state(self, game: SnakeAI) -> np.ndarray:
         head    = game.snake[0]
@@ -77,8 +78,11 @@ class Agent:
             final_move[move] = 1
         else:
             state0           = tf.convert_to_tensor(state, dtype=tf.float32)
+            state0           = tf.reshape(state0, (1, 11))
             prediction       = self.model(state0)
-            move             = tf.argmax(prediction).numpy()
+            move             = tf.argmax(prediction).numpy().astype(int)
+            if np.array_equal(move, [0, 0, 0]):
+                move = random.randint(0, 2)
             final_move[move] = 1
         return final_move
     
